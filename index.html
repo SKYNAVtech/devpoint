@@ -866,13 +866,13 @@
         <h2 class="section-title">See it in action</h2>
         <p class="section-lead">Watch a full walkthrough from loading your navigation databases to exporting deviation points for an entire airport network.</p>
         <div class="pipeline">
-          <span class="red">Airport ICAO</span> ──► Load NavDB / AptDB<br>
+          Load NavDB / AptDB ──► <span class="red">Airport ICAO</span>  <br>
           <span class="dim">        │</span><br>
           <span class="dim">        ▼</span><br>
-          SID Resolution ──► <span class="red">Altitude Intercept</span><br>
+          SID Resolution ──► <span class="red">EO altitude or distance</span><br>
           <span class="dim">        │</span><br>
           <span class="dim">        ▼</span><br>
-          CSV + KML ──► <span class="red">FOSA / Simulator</span>
+          Performance computation  ──► <span class="red">KML with net flight path</span>
         </div>
       </div>
 
@@ -905,70 +905,36 @@
         </p>
         <div class="warn-box">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          GrtoH files are <strong>not bundled</strong> with the installer. They contain
-          simulator-specific altitude performance data that you export from your own
-          simulator or performance tool.
+          <p>GrtoH files are <strong>not bundled</strong> with the installer. They contain
+          simulator specific altitude performance data that you export from your own
+          performance tool.</p>
         </div>
         <div class="steps">
           <div class="step">
             <div class="step-num">1</div>
             <div class="step-body">
-              <strong>Export GrtoH tables from your simulator.</strong> Select the A320 family
-              configuration(s) you use and export as CSV with columns
-              <code>DIST_NM</code> and <code>ALT_FT</code>.
+              Navigate to
+              <code>%PROGRAMFILES%\SKYNAV DevPoint\Data\GrtoH\</code> and check Readme.txt.
             </div>
           </div>
-          <div class="step">
-            <div class="step-num">2</div>
-            <div class="step-body">
-              <strong>Open the GrtoH folder.</strong> Navigate to
-              <code>%PROGRAMFILES%\SKYNAV DevPoint\Data\GrtoH\</code>
-              or use <em>Options → Open GrtoH Folder</em> from inside the app.
-            </div>
-          </div>
+
           <div class="step">
             <div class="step-num">3</div>
             <div class="step-body">
               <strong>Copy your CSV files into the folder.</strong> One file per aircraft
-              weight / engine variant. The filename becomes the label shown in the
-              GrtoH Profile dropdown.
+              . The filename shall be the aircraft database name.
             </div>
           </div>
           <div class="step">
             <div class="step-num">4</div>
             <div class="step-body">
               <strong>Launch SKYNAV DevPoint.</strong> The app scans the folder on startup.
-              If the dropdown is populated, setup is complete.
             </div>
           </div>
         </div>
       </div>
 
       <div class="reveal">
-        <div class="code-block">
-          <div class="code-block-header">
-            <div class="dots">
-              <div class="dot dot-r"></div>
-              <div class="dot dot-y"></div>
-              <div class="dot dot-g"></div>
-            </div>
-            <span>A320_CFM_MTOW.csv — example GrtoH file</span>
-          </div>
-          <pre><span class="c-dim"># A320 CFM MTOW — ISA conditions</span>
-<span class="c-dim"># Generated: 2025-06-01</span>
-<span class="c-blue">DIST_NM</span>,<span class="c-blue">ALT_FT</span>,KCAS,VS_FPM
-0.00,0,0,0
-0.10,38,145,820
-0.20,80,148,810
-0.50,210,152,800
-1.00,450,155,790
-1.50,710,157,785
-2.00,920,158,780
-2.50,<span class="c-red">1148</span>,159,775
-3.00,1390,160,770
-3.50,1630,160,765
-4.00,1865,161,760</pre>
-        </div>
 
         <div class="code-block" style="margin-top:1.25rem">
           <div class="code-block-header">
@@ -980,10 +946,10 @@
             <span>Folder structure after setup</span>
           </div>
           <pre><span class="c-blue">Data\GrtoH\</span>
-├── <span class="c-green">A320_CFM_MTOW.csv</span>
-├── <span class="c-green">A320_CFM_OPT.csv</span>
-├── <span class="c-green">A320_IAE_MTOW.csv</span>
-└── <span class="c-green">A320_IAE_OPT.csv</span></pre>
+            ├── <span class="c-green">AB100A01.csv</span>
+            ├── <span class="c-green">AB200A01.csv</span>
+            ├── <span class="c-green">AB300A01.csv</span>
+            └── <span class="c-green">AB400A01.csv</span></pre>
         </div>
       </div>
     </div>
@@ -1016,7 +982,7 @@
         <span class="mode-tag">RECOMMENDED</span>
         <p class="mode-title">NavDB Mode</p>
         <p class="mode-desc">
-          Uses a full Navigraph / Jeppesen navigation database export to resolve the
+          Uses a full aircraft navigation database export to resolve the
           complete SID leg sequence — including leg types (CF, TF, DF, VA, RF…),
           altitude constraints, and transition waypoints. Provides the highest
           geometric accuracy for production and regulatory use.
@@ -1027,9 +993,7 @@
         <p class="mode-title">ARINC424 Mode</p>
         <p class="mode-desc">
           When no NavDB is available, derives a straight-out departure track from
-          AptDB runway coordinates and magnetic variation, following ARINC424
-          geometric conventions. Suitable for preliminary analysis and airports
-          with incomplete NavDB coverage.
+          AptDB runway coordinates and magnetic variation. You can then use your ARINC424 database to complete the SID leg sequence.
         </p>
       </div>
     </div>
@@ -1046,7 +1010,7 @@
         <tbody>
           <tr>
             <td>Turn geometry</td>
-            <td class="good">Full leg resolution</td>
+            <td class="good">Full SID resolution</td>
             <td class="ok">Not modelled</td>
           </tr>
           <tr>
@@ -1055,24 +1019,14 @@
             <td class="ok">Straight-out only</td>
           </tr>
           <tr>
-            <td>Altitude constraints</td>
-            <td class="good">From NavDB</td>
-            <td class="ok">Not applied</td>
-          </tr>
-          <tr>
-            <td>Magnetic variation</td>
-            <td class="good">Per-waypoint</td>
-            <td class="ok">Airport-level only</td>
-          </tr>
-          <tr>
-            <td>Typical lateral error</td>
-            <td class="good">&lt; 0.1 NM</td>
-            <td class="ok">0.2 – 1.5 NM</td>
+            <td>Flight phases</td>
+            <td class="good">EO defined by the user</td>
+            <td class="good">EO defined by the user</td>
           </tr>
           <tr>
             <td>Output formats</td>
-            <td>CSV + KML</td>
-            <td>CSV + KML</td>
+            <td>PEP</td>
+            <td>PEP</td>
           </tr>
         </tbody>
       </table>
@@ -1108,49 +1062,21 @@
           SKYNAV DevPoint
           <span class="version-pill" id="dl-version">latest</span>
         </div>
-        <div class="dl-meta">Windows 10 / 11 · 64-bit · Nuitka standalone build</div>
-        <div class="dl-meta" style="margin-top:.4rem">Includes 30-day full-featured evaluation period</div>
+        <div class="dl-meta" style="margin-top:.4rem">Includes 15 day full-featured evaluation period</div>
       </div>
       <a class="dl-btn" id="dl-main-btn"
-         href="https://github.com/Skynavtech/devpoint/releases/latest">
+         href="https://github.com/skynavtech/devpoint/releases/latest/download/SKYNAV_DevPoint_Setup.exe">
         ⬇ Download .exe
       </a>
     </div>
 
-    <div class="sysreq-grid reveal">
-      <div class="sysreq-item">
-        <div class="sysreq-label">Operating System</div>
-        <div class="sysreq-value">Windows 10 / 11</div>
-      </div>
-      <div class="sysreq-item">
-        <div class="sysreq-label">Architecture</div>
-        <div class="sysreq-value">64-bit</div>
-      </div>
-      <div class="sysreq-item">
-        <div class="sysreq-label">RAM</div>
-        <div class="sysreq-value">4 GB</div>
-      </div>
-      <div class="sysreq-item">
-        <div class="sysreq-label">Disk Space</div>
-        <div class="sysreq-value">200 MB</div>
-      </div>
-      <div class="sysreq-item">
-        <div class="sysreq-label">Display</div>
-        <div class="sysreq-value">1280 × 720</div>
-      </div>
-      <div class="sysreq-item">
-        <div class="sysreq-label">Dependencies</div>
-        <div class="sysreq-value">None</div>
-      </div>
-    </div>
-
     <div class="eval-notice reveal">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      SKYNAV DevPoint runs in evaluation mode for 30 days from first launch with no
+      <p>SKYNAV DevPoint runs in evaluation mode for 15 days from first launch with no
       feature restrictions. To obtain a permanent license, go to
       <strong>Options → License Info</strong> in the app, note your Hardware ID,
       and contact the author via the
-      <a href="https://github.com/Skynavtech/devpoint/issues" style="color:var(--red)">GitHub repository</a>.
+      <a href="mailto:skynav.tech@gmail.com" style="color:var(--red)">Email</a>.</p>
     </div>
 
   </div>
@@ -1163,14 +1089,14 @@
 <footer>
   <div class="footer-brand">SKYNAV DevPoint</div>
   <div>
-    <a href="https://github.com/Skynavtech/devpoint">GitHub</a>
+    <a href="https://github.com/skynavtech/devpoint">GitHub</a>
     &nbsp;·&nbsp;
-    <a href="https://github.com/Skynavtech/devpoint/issues">Issues</a>
+    <a href="https://github.com/skynavtech/devpoint/issues">Issues</a>
     &nbsp;·&nbsp;
-    <a href="https://github.com/Skynavtech/devpoint/releases">Releases</a>
+    <a href="https://github.com/skynavtech/devpoint/releases">Releases</a>
   </div>
   <div style="margin-top:.5rem;opacity:.5;font-size:.75rem">
-    Not for regulatory use without cross-validation against official published procedures.
+    Not for regulatory use without cross validation against official published procedures.
   </div>
 </footer>
 
@@ -1210,7 +1136,7 @@ document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 /* ── Fetch latest GitHub release ─────────────────────────── */
 async function fetchLatestRelease() {
   try {
-    const res  = await fetch('https://api.github.com/repos/Skynavtech/devpoint/releases/latest',
+    const res  = await fetch('https://api.github.com/repos/skynavtech/devpoint/releases/latest',
                              { headers: { Accept: 'application/vnd.github+json' } });
     if (!res.ok) return;
     const data = await res.json();
