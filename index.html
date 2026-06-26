@@ -428,11 +428,79 @@
     .pipeline .dim { opacity: .45; }
 
     /* ════════════════════════════════════════════════════════
+       SPLAY AREA
+    ════════════════════════════════════════════════════════ */
+    #splay {
+      padding: 5rem 0;
+      background: var(--bg);
+    }
+
+    .splay-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3.5rem;
+      align-items: center;
+    }
+
+    .splay-video-wrap {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 */
+      height: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 48px rgba(0,0,0,.5);
+    }
+
+    .splay-video-wrap video {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+
+    /* Placeholder shown while video hasn't loaded yet */
+    .splay-video-wrap .splay-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .6rem;
+      background: var(--bg3);
+      color: var(--muted);
+      font-size: .85rem;
+      pointer-events: none;
+      transition: opacity .4s ease;
+    }
+    .splay-video-wrap .splay-placeholder svg { opacity: .25; }
+    .splay-video-wrap.loaded .splay-placeholder { opacity: 0; }
+
+    .splay-text .section-lead { max-width: 100%; }
+
+    .splay-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      margin-top: 1.4rem;
+      background: var(--red-wash);
+      border: 1px solid var(--red-glow);
+      border-radius: 6px;
+      padding: .5rem 1rem;
+      font-size: .82rem;
+      color: var(--red);
+      font-weight: 600;
+      letter-spacing: .03em;
+    }
+
+
+    /* ════════════════════════════════════════════════════════
        GRTOH SETUP
     ════════════════════════════════════════════════════════ */
     #setup {
       padding: 5rem 0;
-      background: var(--bg);
+      background: var(--bg2);
     }
 
     .setup-layout {
@@ -533,7 +601,7 @@
     ════════════════════════════════════════════════════════ */
     #guide {
       padding: 5rem 0;
-      background: var(--bg2);
+      background: var(--bg);
     }
 
     .guide-header { margin-bottom: 3rem; }
@@ -599,11 +667,11 @@
     ════════════════════════════════════════════════════════ */
     #download {
       padding: 5rem 0 6rem;
-      background: var(--bg);
+      background: var(--bg2);
     }
 
     .download-card {
-      background: var(--bg2);
+      background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 2.5rem;
@@ -658,7 +726,7 @@
       gap: 1rem;
     }
     .sysreq-item {
-      background: var(--bg2);
+      background: var(--bg);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 1.1rem 1.25rem;
@@ -680,7 +748,7 @@
       display: flex;
       align-items: flex-start;
       gap: .75rem;
-      background: var(--bg2);
+      background: var(--bg);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 1.1rem 1.4rem;
@@ -695,7 +763,7 @@
        FOOTER
     ════════════════════════════════════════════════════════ */
     footer {
-      background: var(--bg2);
+      background: var(--bg);
       border-top: 1px solid var(--border);
       padding: 2rem;
       text-align: center;
@@ -716,6 +784,7 @@
       .nav-links { display: none; }
       .video-layout,
       .setup-layout,
+      .splay-layout,
       .modes-grid { grid-template-columns: 1fr; }
       .download-card { grid-template-columns: 1fr; }
       .dl-btn { width: 100%; justify-content: center; }
@@ -732,6 +801,7 @@
       opacity: 1;
       transform: none;
     }
+
   </style>
 </head>
 <body>
@@ -744,6 +814,7 @@
   <ul class="nav-links">
     <li><a href="#features">Features</a></li>
     <li><a href="#video">Demo</a></li>
+    <li><a href="#splay">Splay Area</a></li>
     <li><a href="#setup">GrtoH Setup</a></li>
     <li><a href="#guide">User Guide</a></li>
     <li><a href="#download">Download</a></li>
@@ -840,13 +911,7 @@
     <div class="video-layout">
 
       <!-- YouTube embed — replace VIDEO_ID with your real YouTube ID -->
-      <div class="video-frame reveal">
-        <!--
-          TO ADD YOUR VIDEO:
-          Replace  src="https://www.youtube.com/embed/VIDEO_ID"
-          with the actual ID from your YouTube URL.
-          Example: https://youtu.be/dQw4w9WgXcQ → VIDEO_ID = dQw4w9WgXcQ
-        -->        
+      <div class="video-frame reveal"> 
         <iframe
           src="https://www.youtube.com/embed/31UG_7hYhto"
           title="SKYNAV DevPoint — Demo"
@@ -869,6 +934,79 @@
           <span class="dim">        ▼</span><br>
           Performance computation  ──► <span class="red">KML with net flight path</span>
         </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     SPLAY AREA
+══════════════════════════════════════════════════════════ -->
+<section id="splay">
+  <div class="inner">
+
+    <div class="hud-divider">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" stroke-width="1.5">
+        <circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="2"></circle>
+        <line x1="12" y1="3" x2="12" y2="7"></line><line x1="12" y1="17" x2="12" y2="21"></line>
+        <line x1="3" y1="12" x2="7" y2="12"></line><line x1="17" y1="12" x2="21" y2="12"></line>
+      </svg>
+    </div>
+
+    <div class="splay-layout">
+
+      <div class="splay-video-wrap reveal">
+        <!--
+          OPTION A — Local file or GitHub Releases asset (recommended):
+            Replace  src="assets/splay-demo.mp4"
+            with the path to your .mp4 (e.g. a GitHub Releases URL).
+            Example:
+              src="https://github.com/skynavtech/devpoint/releases/download/v1.0/splay-demo.mp4"
+
+          OPTION B — YouTube autoplay loop (if you prefer hosting on YouTube):
+            Replace the <video> block with:
+              <iframe
+                src="https://www.youtube.com/embed/YOUR_VIDEO_ID?autoplay=1&mute=1&loop=1&playlist=YOUR_VIDEO_ID&controls=0"
+                title="Splay Area demo"
+                allow="autoplay; encrypted-media"
+                allowfullscreen
+                style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;">
+              </iframe>
+        -->
+        <div class="splay-placeholder">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" stroke-width="1.5">
+            <polygon points="12 2 22 19 2 19"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          Splay Area demo
+        </div>
+        <video
+          id="splay-video"
+          muted
+          loop
+          playsinline
+          preload="none"
+          title="Splay Area — net flight path conversion demo">
+        </video>
+      </div>
+
+      <div class="splay-text reveal">
+        <p class="section-eyebrow">Splay Area</p>
+        <h2 class="section-title">Let the splay area help you.</h2>
+        <p class="section-lead">
+          You can convert the splay area to net flight path to help you identify critical obstacles.
+          SKYNAV DevPoint renders the splay geometry directly in Google Earth so obstacle clearance
+          analysis becomes visual and immediate.
+        </p>
+        <span class="splay-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Available in both NavDB and ARINC424 mode
+        </span>
       </div>
 
     </div>
@@ -1169,6 +1307,34 @@ async function fetchLatestRelease() {
 }
 
 fetchLatestRelease();
+
+/* ── Splay video — lazy load + autoplay on viewport entry ── */
+(function () {
+  const video = document.getElementById('splay-video');
+  const wrap  = video ? video.closest('.splay-video-wrap') : null;
+  if (!video || !wrap) return;
+
+  const videoObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        // Set src only now — browser starts fetching here, not on page load
+        if (!video.src) {
+          video.src = 'assets/splay-demo.mp4';
+          video.load();
+        }
+        video.play().catch(() => {/* autoplay blocked — muted should be fine */});
+        video.addEventListener('canplay', () => wrap.classList.add('loaded'), { once: true });
+        videoObserver.unobserve(wrap);
+      } else {
+        // Pause when scrolled out to save resources
+        if (!video.paused) video.pause();
+      }
+    });
+  }, { threshold: 0.15 });
+
+  videoObserver.observe(wrap);
+})();
+
 
 /* ── Smooth scroll for all anchor links ──────────────────── */
 document.querySelectorAll('a[href^="#"]').forEach(a => {
