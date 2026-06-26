@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SKYNAV DevPoint — Departure Deviation Point Calculator</title>
+  <meta name="description" content="Professional desktop tool for flight operations engineers. Computes departure deviation points along SID procedures from NavDB or ARINC424 data.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Reset & tokens ──────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red:       #E74C3C;
+      --red-dim:   #C0392B;
+      --red-glow:  rgba(231,76,60,.30);
+      --red-wash:  rgba(231,76,60,.08);
+      --bg:        #0D1117;
+      --bg2:       #161B22;
+      --bg3:       #1C2128;
+      --border:    #30363D;
+      --text:      #C9D1D9;
+      --muted:     #8B949E;
+      --white:     #E6EDF3;
+      --font-body: 'Inter', sans-serif;
+      --font-hud:  'Audiowide', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --nav-h:     60px;
+      --max-w:     1080px;
+      --radius:    8px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Scrollbar ───────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--red); }
+
+    /* ── NAV ─────────────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      background: rgba(13,17,23,.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      padding: 0 2rem;
+      gap: 2rem;
+    }
+
+    .nav-brand {
+      font-family: var(--font-hud);
+      color: var(--red);
+      font-size: 1.1rem;
+      letter-spacing: .05em;
+      text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .nav-brand span { color: var(--muted); font-size: .75rem; letter-spacing: .12em; margin-left: .5rem; vertical-align: middle; }
+
+    .nav-links {
+      display: flex;
+      gap: 0;
+      list-style: none;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .nav-links a {
+      display: block;
+      padding: .4rem .9rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: .85rem;
+      font-weight: 500;
+      letter-spacing: .02em;
+      border-radius: 6px;
+      transition: color .18s, background .18s;
+    }
+    .nav-links a:hover { color: var(--white); background: var(--bg3); }
+    .nav-links a.active { color: var(--red); }
+
+    .nav-cta {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      background: var(--red);
+      color: #fff;
+      text-decoration: none;
+      padding: .45rem 1.1rem;
+      border-radius: 6px;
+      font-size: .85rem;
+      font-weight: 600;
+      transition: background .18s, transform .12s, box-shadow .18s;
+      box-shadow: 0 3px 14px var(--red-glow);
+    }
+    .nav-cta:hover { background: var(--red-dim); transform: translateY(-1px); box-shadow: 0 5px 20px var(--red-glow); }
+
+    /* ── Shared layout ───────────────────────────────────────── */
+    section { scroll-margin-top: var(--nav-h); }
+
+    .inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* ── HUD divider (signature element) ─────────────────────── */
+    .hud-divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0 2rem;
+      max-width: var(--max-w);
+      margin: 0 auto 3.5rem;
+      opacity: .35;
+      user-select: none;
+    }
+    .hud-divider::before,
+    .hud-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--red));
+    }
+    .hud-divider::after {
+      background: linear-gradient(90deg, var(--red), transparent);
+    }
+    .hud-divider svg { flex-shrink: 0; }
+
+    /* ── Section heading ─────────────────────────────────────── */
+    .section-eyebrow {
+      font-family: var(--font-hud);
+      font-size: .7rem;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: .6rem;
+    }
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.25;
+      margin-bottom: 1rem;
+    }
+    .section-lead {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 640px;
+      line-height: 1.75;
+    }
+
+    /* ════════════════════════════════════════════════════════
+       HERO
+    ════════════════════════════════════════════════════════ */
+    #hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: calc(var(--nav-h) + 4rem) 2rem 5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Radial glow behind hero text */
+    #hero::before {
+      content: '';
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 700px;
+      height: 400px;
+      background: radial-gradient(ellipse at center, rgba(231,76,60,.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Grid lines — cockpit feel */
+    #hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 60px 60px;
+      opacity: .15;
+      pointer-events: none;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    }
+
+    .hero-wordmark {
+      font-family: var(--font-hud);
+      font-size: clamp(3rem, 8vw, 5.5rem);
+      color: var(--red);
+      letter-spacing: .06em;
+      line-height: 1;
+      text-shadow: 0 0 60px var(--red-glow);
+      position: relative;
+    }
+
+    .hero-sub {
+      font-family: var(--font-hud);
+      font-size: clamp(.7rem, 2vw, .9rem);
+      color: var(--muted);
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      margin-top: .6rem;
+      position: relative;
+    }
+
+    .hero-desc {
+      max-width: 580px;
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin-top: 1.8rem;
+      line-height: 1.8;
+      position: relative;
+    }
+
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: .6rem;
+      margin-top: 1.8rem;
+      position: relative;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: .25rem .85rem;
+      font-size: .78rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 2.4rem;
+      position: relative;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: var(--red);
+      color: #fff;
+      text-decoration: none;
+      padding: .8rem 1.8rem;
+      border-radius: var(--radius);
+      font-weight: 700;
+      font-size: .95rem;
+      transition: background .18s, transform .13s, box-shadow .18s;
+      box-shadow: 0 4px 22px var(--red-glow);
+    }
+    .btn-primary:hover { background: var(--red-dim); transform: translateY(-2px); box-shadow: 0 7px 30px var(--red-glow); }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: transparent;
+      color: var(--text);
+      text-decoration: none;
+      padding: .8rem 1.8rem;
+      border-radius: var(--radius);
+      font-weight: 600;
+      font-size: .95rem;
+      border: 1px solid var(--border);
+      transition: border-color .18s, color .18s;
+    }
+    .btn-ghost:hover { border-color: var(--red); color: var(--red); }
+
+    .scroll-hint {
+      margin-top: 3.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .4rem;
+      color: var(--border);
+      font-size: .72rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      position: relative;
+      animation: float 2.4s ease-in-out infinite;
+    }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+    .scroll-hint svg { opacity: .4; }
+
+    /* ════════════════════════════════════════════════════════
+       FEATURES
+    ════════════════════════════════════════════════════════ */
+    #features {
+      padding: 5rem 0;
+      background: var(--bg);
+    }
+
+    .features-header { text-align: center; margin-bottom: 3rem; }
+    .features-header .section-lead { margin: 0 auto; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .feat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      transition: border-color .2s, transform .15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .feat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--red);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform .25s;
+    }
+    .feat-card:hover { border-color: rgba(231,76,60,.4); transform: translateY(-3px); }
+    .feat-card:hover::before { transform: scaleX(1); }
+
+    .feat-icon { font-size: 1.6rem; margin-bottom: .75rem; }
+    .feat-title { font-size: 1rem; font-weight: 600; color: var(--white); margin-bottom: .5rem; }
+    .feat-desc { font-size: .9rem; color: var(--muted); line-height: 1.65; }
+
+    /* ════════════════════════════════════════════════════════
+       VIDEO
+    ════════════════════════════════════════════════════════ */
+    #video {
+      padding: 5rem 0;
+      background: var(--bg2);
+    }
+
+    .video-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3.5rem;
+      align-items: center;
+    }
+
+    .video-frame {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 */
+      height: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 48px rgba(0,0,0,.5);
+    }
+    .video-frame iframe {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border: none;
+    }
+
+    /* Placeholder shown until real YouTube ID is set */
+    .video-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg3);
+      color: var(--muted);
+      gap: .75rem;
+      font-size: .9rem;
+    }
+    .video-placeholder svg { opacity: .3; }
+
+    .video-text .section-lead { max-width: 100%; }
+
+    .pipeline {
+      margin-top: 1.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      font-family: var(--font-mono);
+      font-size: .8rem;
+      color: var(--muted);
+      line-height: 2;
+    }
+    .pipeline .red { color: var(--red); }
+    .pipeline .dim { opacity: .45; }
+
+    /* ════════════════════════════════════════════════════════
+       GRTOH SETUP
+    ════════════════════════════════════════════════════════ */
+    #setup {
+      padding: 5rem 0;
+      background: var(--bg);
+    }
+
+    .setup-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3.5rem;
+      align-items: start;
+    }
+
+    .steps { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1.2rem; }
+
+    .step {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    .step-num {
+      min-width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: var(--red);
+      color: #fff;
+      font-weight: 700;
+      font-size: .82rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: .15rem;
+    }
+    .step-body { font-size: .92rem; color: var(--text); line-height: 1.65; }
+    .step-body strong { color: var(--white); }
+    .step-body code {
+      font-family: var(--font-mono);
+      font-size: .82rem;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .1rem .4rem;
+      color: var(--red);
+    }
+
+    .code-block {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-top: 1.5rem;
+    }
+    .code-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .75rem;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+    .code-block-header .dots { display: flex; gap: .35rem; }
+    .code-block-header .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .dot-r { background: #FF5F57; }
+    .dot-y { background: #FEBC2E; }
+    .dot-g { background: #28C840; }
+
+    .code-block pre {
+      padding: 1.25rem 1.5rem;
+      font-family: var(--font-mono);
+      font-size: .8rem;
+      line-height: 1.9;
+      color: var(--muted);
+      overflow-x: auto;
+    }
+    .code-block .c-red   { color: var(--red); }
+    .code-block .c-green { color: #3FB950; }
+    .code-block .c-blue  { color: #79C0FF; }
+    .code-block .c-dim   { opacity: .4; }
+
+    .warn-box {
+      display: flex;
+      gap: .75rem;
+      align-items: flex-start;
+      background: rgba(231,76,60,.07);
+      border: 1px solid rgba(231,76,60,.25);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin-top: 1.5rem;
+      font-size: .88rem;
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .warn-box svg { flex-shrink: 0; margin-top: .15rem; }
+
+    /* ════════════════════════════════════════════════════════
+       USER GUIDE
+    ════════════════════════════════════════════════════════ */
+    #guide {
+      padding: 5rem 0;
+      background: var(--bg2);
+    }
+
+    .guide-header { margin-bottom: 3rem; }
+
+    .modes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .mode-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      transition: border-color .2s;
+    }
+    .mode-card:hover { border-color: rgba(231,76,60,.4); }
+
+    .mode-tag {
+      display: inline-block;
+      font-family: var(--font-hud);
+      font-size: .65rem;
+      letter-spacing: .15em;
+      color: var(--red);
+      border: 1px solid rgba(231,76,60,.35);
+      border-radius: 4px;
+      padding: .15rem .55rem;
+      margin-bottom: 1rem;
+    }
+    .mode-title { font-size: 1.15rem; font-weight: 700; color: var(--white); margin-bottom: .6rem; }
+    .mode-desc { font-size: .9rem; color: var(--muted); line-height: 1.65; }
+
+    .accuracy-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .875rem;
+      margin-top: 2.5rem;
+    }
+    .accuracy-table th {
+      text-align: left;
+      padding: .65rem 1rem;
+      color: var(--muted);
+      font-weight: 500;
+      font-size: .78rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+    .accuracy-table td {
+      padding: .75rem 1rem;
+      border-bottom: 1px solid rgba(48,54,61,.6);
+      color: var(--text);
+      vertical-align: top;
+    }
+    .accuracy-table tr:last-child td { border-bottom: none; }
+    .accuracy-table .good { color: #3FB950; font-weight: 500; }
+    .accuracy-table .ok   { color: #D29922; font-weight: 500; }
+
+    /* ════════════════════════════════════════════════════════
+       DOWNLOAD
+    ════════════════════════════════════════════════════════ */
+    #download {
+      padding: 5rem 0 6rem;
+      background: var(--bg);
+    }
+
+    .download-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2.5rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 2rem;
+      align-items: center;
+      box-shadow: 0 0 0 1px rgba(231,76,60,.12), 0 12px 48px rgba(0,0,0,.3);
+      margin-bottom: 2.5rem;
+    }
+
+    .dl-name {
+      font-family: var(--font-hud);
+      font-size: 1.4rem;
+      color: var(--red);
+      margin-bottom: .4rem;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+    .version-pill {
+      font-family: var(--font-mono);
+      font-size: .75rem;
+      background: rgba(231,76,60,.12);
+      color: var(--red);
+      border: 1px solid rgba(231,76,60,.25);
+      border-radius: 4px;
+      padding: .15rem .55rem;
+    }
+    .dl-meta { color: var(--muted); font-size: .9rem; margin-top: .25rem; }
+
+    .dl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      background: var(--red);
+      color: #fff;
+      text-decoration: none;
+      padding: 1rem 2rem;
+      border-radius: var(--radius);
+      font-weight: 700;
+      font-size: 1rem;
+      white-space: nowrap;
+      transition: background .18s, transform .13s, box-shadow .18s;
+      box-shadow: 0 4px 24px var(--red-glow);
+    }
+    .dl-btn:hover { background: var(--red-dim); transform: translateY(-2px); box-shadow: 0 8px 32px var(--red-glow); }
+
+    .sysreq-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    .sysreq-item {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+    }
+    .sysreq-label {
+      font-size: .72rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: .3rem;
+    }
+    .sysreq-value {
+      font-size: .95rem;
+      font-weight: 600;
+      color: var(--white);
+    }
+
+    .eval-notice {
+      display: flex;
+      align-items: flex-start;
+      gap: .75rem;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.4rem;
+      margin-top: 2rem;
+      font-size: .88rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+    .eval-notice svg { flex-shrink: 0; color: var(--muted); margin-top: .1rem; }
+
+    /* ════════════════════════════════════════════════════════
+       FOOTER
+    ════════════════════════════════════════════════════════ */
+    footer {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      font-size: .82rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--red); }
+    .footer-brand {
+      font-family: var(--font-hud);
+      color: var(--red);
+      font-size: .9rem;
+      margin-bottom: .4rem;
+    }
+
+    /* ── Mobile ──────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .video-layout,
+      .setup-layout,
+      .modes-grid { grid-template-columns: 1fr; }
+      .download-card { grid-template-columns: 1fr; }
+      .dl-btn { width: 100%; justify-content: center; }
+      .section-title { font-size: 1.6rem; }
+    }
+
+    /* ── Scroll-reveal ───────────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity .55s ease, transform .55s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     NAV
+══════════════════════════════════════════════════════════ -->
+<nav>
+  <a class="nav-brand" href="#hero">SKYNAV <span>DEVPOINT</span></a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#video">Demo</a></li>
+    <li><a href="#setup">GrtoH Setup</a></li>
+    <li><a href="#guide">User Guide</a></li>
+    <li><a href="#download">Download</a></li>
+  </ul>
+  <a class="nav-cta" href="#download" id="nav-dl-btn">
+    ↓ Download
+    <span class="version-pill" id="nav-version" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.2)"></span>
+  </a>
+</nav>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     HERO
+══════════════════════════════════════════════════════════ -->
+<section id="hero">
+  <h1 class="hero-wordmark">SKYNAV</h1>
+  <p class="hero-sub">DevPoint &nbsp;·&nbsp; Departure Deviation Point Calculator</p>
+  <p class="hero-desc">
+    A professional desktop tool for flight operations engineers.
+    Computes departure deviation points along SID procedures from NavDB or
+    ARINC424 data — delivering results in CSV and KML formats ready for FOSA
+    and simulator workflows.
+  </p>
+  <div class="hero-badges">
+    <span class="badge">🖥️ Windows 11</span>
+    <span class="badge">✈️ All Airbus Aircraft</span>
+    <span class="badge">📡 Navigation Database or ARINC 424</span>
+    <span class="badge">🔐 Offline Licensed</span>
+    <span class="badge">🗺️ KML + CSV Output</span>
+  </div>
+  <div class="hero-cta">
+    <a class="btn-primary" href="#download">⬇ Download <span id="hero-version"></span></a>
+    <a class="btn-ghost" href="#video">▶ Watch demo</a>
+  </div>
+  <div class="scroll-hint">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    Scroll to explore
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     FEATURES
+══════════════════════════════════════════════════════════ -->
+<section id="features">
+  <div class="inner">
+    <div class="features-header reveal">
+      <p class="section-eyebrow">Capabilities</p>
+      <h2 class="section-title">Everything you need for<br>deviation point analysis</h2>
+      <p class="section-lead">From raw NavDB data to georeferenced output, SKYNAV DevPoint handles the full calculation pipeline in seconds.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feat-card reveal">
+        <div class="feat-icon">🗄️</div>
+        <p class="feat-title">NavDB Mode</p>
+        <p class="feat-desc">Full procedure resolution using a Navigraph/Jeppesen navigation database. Reads SID waypoints, altitude constraints, and leg types with maximum geometric accuracy.</p>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon">📋</div>
+        <p class="feat-title">ARINC424 Mode</p>
+        <p class="feat-desc">Fallback mode when no NavDB is available. Derives runway heading and basic SID geometry directly from AptDB airport data following ARINC424 conventions.</p>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon">🗺️</div>
+        <p class="feat-title">KML + CSV Output</p>
+        <p class="feat-desc">Results exported to structured CSV files and georeferenced KML overlays, organised per airport and runway — ready for Google Earth and FOSA import.</p>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon">🔒</div>
+        <p class="feat-title">Offline Licensing</p>
+        <p class="feat-desc">HMAC-SHA256 hardware-bound license. No internet connection required after activation. Includes a 30-day evaluation period with full feature access.</p>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon">📊</div>
+        <p class="feat-title">Real-time Log</p>
+        <p class="feat-desc">Color-coded processing log lets you follow each calculation step, catch warnings, and audit results without leaving the application.</p>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon">🌐</div>
+        <p class="feat-title">Splay Viewer</p>
+        <p class="feat-desc">Integrated map viewer displays the computed deviation points over a cartographic background for a quick visual sanity-check before exporting.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     VIDEO
+══════════════════════════════════════════════════════════ -->
+<section id="video">
+  <div class="inner">
+    <div class="video-layout">
+
+      <!-- YouTube embed — replace VIDEO_ID with your real YouTube ID -->
+      <div class="video-frame reveal">
+        <!--
+          TO ADD YOUR VIDEO:
+          Replace  src="https://www.youtube.com/embed/VIDEO_ID"
+          with the actual ID from your YouTube URL.
+          Example: https://youtu.be/dQw4w9WgXcQ → VIDEO_ID = dQw4w9WgXcQ
+        -->
+        <div class="video-placeholder">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18a1 1 0 0 0 0-1.69L9.54 5.98A1 1 0 0 0 8 6.82z"/></svg>
+          <span>Video coming soon</span>
+          <span style="font-size:.75rem;opacity:.6">Replace VIDEO_ID in index.html</span>
+        </div>
+        <!--
+        <iframe
+          src="https://www.youtube.com/embed/VIDEO_ID?rel=0&modestbranding=1"
+          title="SKYNAV DevPoint — Demo"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen>
+        </iframe>
+        -->
+      </div>
+
+      <div class="video-text reveal">
+        <p class="section-eyebrow">Demo</p>
+        <h2 class="section-title">See it in action</h2>
+        <p class="section-lead">Watch a full walkthrough from loading your navigation databases to exporting deviation points for an entire airport network.</p>
+        <div class="pipeline">
+          <span class="red">Airport ICAO</span> ──► Load NavDB / AptDB<br>
+          <span class="dim">        │</span><br>
+          <span class="dim">        ▼</span><br>
+          SID Resolution ──► <span class="red">Altitude Intercept</span><br>
+          <span class="dim">        │</span><br>
+          <span class="dim">        ▼</span><br>
+          CSV + KML ──► <span class="red">FOSA / Simulator</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     GRTOH SETUP
+══════════════════════════════════════════════════════════ -->
+<section id="setup">
+  <div class="inner">
+
+    <div class="hud-divider">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" stroke-width="1.5">
+        <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/>
+        <line x1="12" y1="3" x2="12" y2="7"/><line x1="12" y1="17" x2="12" y2="21"/>
+        <line x1="3" y1="12" x2="7" y2="12"/><line x1="17" y1="12" x2="21" y2="12"/>
+      </svg>
+    </div>
+
+    <div class="setup-layout">
+      <div class="reveal">
+        <p class="section-eyebrow">Before first launch</p>
+        <h2 class="section-title">GrtoH Database Setup</h2>
+        <p class="section-lead">
+          SKYNAV DevPoint cannot calculate deviation points without a populated
+          GrtoH table. This is a one-time setup that takes under two minutes.
+        </p>
+        <div class="warn-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          GrtoH files are <strong>not bundled</strong> with the installer. They contain
+          simulator-specific altitude performance data that you export from your own
+          simulator or performance tool.
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <strong>Export GrtoH tables from your simulator.</strong> Select the A320 family
+              configuration(s) you use and export as CSV with columns
+              <code>DIST_NM</code> and <code>ALT_FT</code>.
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <strong>Open the GrtoH folder.</strong> Navigate to
+              <code>%PROGRAMFILES%\SKYNAV DevPoint\Data\GrtoH\</code>
+              or use <em>Options → Open GrtoH Folder</em> from inside the app.
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <strong>Copy your CSV files into the folder.</strong> One file per aircraft
+              weight / engine variant. The filename becomes the label shown in the
+              GrtoH Profile dropdown.
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <strong>Launch SKYNAV DevPoint.</strong> The app scans the folder on startup.
+              If the dropdown is populated, setup is complete.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal">
+        <div class="code-block">
+          <div class="code-block-header">
+            <div class="dots">
+              <div class="dot dot-r"></div>
+              <div class="dot dot-y"></div>
+              <div class="dot dot-g"></div>
+            </div>
+            <span>A320_CFM_MTOW.csv — example GrtoH file</span>
+          </div>
+          <pre><span class="c-dim"># A320 CFM MTOW — ISA conditions</span>
+<span class="c-dim"># Generated: 2025-06-01</span>
+<span class="c-blue">DIST_NM</span>,<span class="c-blue">ALT_FT</span>,KCAS,VS_FPM
+0.00,0,0,0
+0.10,38,145,820
+0.20,80,148,810
+0.50,210,152,800
+1.00,450,155,790
+1.50,710,157,785
+2.00,920,158,780
+2.50,<span class="c-red">1148</span>,159,775
+3.00,1390,160,770
+3.50,1630,160,765
+4.00,1865,161,760</pre>
+        </div>
+
+        <div class="code-block" style="margin-top:1.25rem">
+          <div class="code-block-header">
+            <div class="dots">
+              <div class="dot dot-r"></div>
+              <div class="dot dot-y"></div>
+              <div class="dot dot-g"></div>
+            </div>
+            <span>Folder structure after setup</span>
+          </div>
+          <pre><span class="c-blue">Data\GrtoH\</span>
+├── <span class="c-green">A320_CFM_MTOW.csv</span>
+├── <span class="c-green">A320_CFM_OPT.csv</span>
+├── <span class="c-green">A320_IAE_MTOW.csv</span>
+└── <span class="c-green">A320_IAE_OPT.csv</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     USER GUIDE
+══════════════════════════════════════════════════════════ -->
+<section id="guide">
+  <div class="inner">
+
+    <div class="hud-divider">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" stroke-width="1.5">
+        <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/>
+        <line x1="12" y1="3" x2="12" y2="7"/><line x1="12" y1="17" x2="12" y2="21"/>
+        <line x1="3" y1="12" x2="7" y2="12"/><line x1="17" y1="12" x2="21" y2="12"/>
+      </svg>
+    </div>
+
+    <div class="guide-header reveal">
+      <p class="section-eyebrow">User Guide</p>
+      <h2 class="section-title">Two modes. One workflow.</h2>
+      <p class="section-lead">Choose the operating mode that fits your available data. Both produce the same CSV and KML output.</p>
+    </div>
+
+    <div class="modes-grid">
+      <div class="mode-card reveal">
+        <span class="mode-tag">RECOMMENDED</span>
+        <p class="mode-title">NavDB Mode</p>
+        <p class="mode-desc">
+          Uses a full Navigraph / Jeppesen navigation database export to resolve the
+          complete SID leg sequence — including leg types (CF, TF, DF, VA, RF…),
+          altitude constraints, and transition waypoints. Provides the highest
+          geometric accuracy for production and regulatory use.
+        </p>
+      </div>
+      <div class="mode-card reveal">
+        <span class="mode-tag" style="color:var(--muted);border-color:var(--border)">FALLBACK</span>
+        <p class="mode-title">ARINC424 Mode</p>
+        <p class="mode-desc">
+          When no NavDB is available, derives a straight-out departure track from
+          AptDB runway coordinates and magnetic variation, following ARINC424
+          geometric conventions. Suitable for preliminary analysis and airports
+          with incomplete NavDB coverage.
+        </p>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <table class="accuracy-table">
+        <thead>
+          <tr>
+            <th>Factor</th>
+            <th>NavDB Mode</th>
+            <th>ARINC424 Mode</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Turn geometry</td>
+            <td class="good">Full leg resolution</td>
+            <td class="ok">Not modelled</td>
+          </tr>
+          <tr>
+            <td>SID-specific routing</td>
+            <td class="good">Yes</td>
+            <td class="ok">Straight-out only</td>
+          </tr>
+          <tr>
+            <td>Altitude constraints</td>
+            <td class="good">From NavDB</td>
+            <td class="ok">Not applied</td>
+          </tr>
+          <tr>
+            <td>Magnetic variation</td>
+            <td class="good">Per-waypoint</td>
+            <td class="ok">Airport-level only</td>
+          </tr>
+          <tr>
+            <td>Typical lateral error</td>
+            <td class="good">&lt; 0.1 NM</td>
+            <td class="ok">0.2 – 1.5 NM</td>
+          </tr>
+          <tr>
+            <td>Output formats</td>
+            <td>CSV + KML</td>
+            <td>CSV + KML</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     DOWNLOAD
+══════════════════════════════════════════════════════════ -->
+<section id="download">
+  <div class="inner">
+
+    <div class="hud-divider">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" stroke-width="1.5">
+        <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/>
+        <line x1="12" y1="3" x2="12" y2="7"/><line x1="12" y1="17" x2="12" y2="21"/>
+        <line x1="3" y1="12" x2="7" y2="12"/><line x1="17" y1="12" x2="21" y2="12"/>
+      </svg>
+    </div>
+
+    <div class="reveal" style="text-align:center;margin-bottom:2.5rem">
+      <p class="section-eyebrow">Download</p>
+      <h2 class="section-title">Get SKYNAV DevPoint</h2>
+      <p class="section-lead" style="margin:0 auto">Windows installer · Self-contained · No Python required</p>
+    </div>
+
+    <div class="download-card reveal">
+      <div>
+        <div class="dl-name">
+          SKYNAV DevPoint
+          <span class="version-pill" id="dl-version">latest</span>
+        </div>
+        <div class="dl-meta">Windows 10 / 11 · 64-bit · Nuitka standalone build</div>
+        <div class="dl-meta" style="margin-top:.4rem">Includes 30-day full-featured evaluation period</div>
+      </div>
+      <a class="dl-btn" id="dl-main-btn"
+         href="https://github.com/Skynavtech/devpoint/releases/latest">
+        ⬇ Download .exe
+      </a>
+    </div>
+
+    <div class="sysreq-grid reveal">
+      <div class="sysreq-item">
+        <div class="sysreq-label">Operating System</div>
+        <div class="sysreq-value">Windows 10 / 11</div>
+      </div>
+      <div class="sysreq-item">
+        <div class="sysreq-label">Architecture</div>
+        <div class="sysreq-value">64-bit</div>
+      </div>
+      <div class="sysreq-item">
+        <div class="sysreq-label">RAM</div>
+        <div class="sysreq-value">4 GB</div>
+      </div>
+      <div class="sysreq-item">
+        <div class="sysreq-label">Disk Space</div>
+        <div class="sysreq-value">200 MB</div>
+      </div>
+      <div class="sysreq-item">
+        <div class="sysreq-label">Display</div>
+        <div class="sysreq-value">1280 × 720</div>
+      </div>
+      <div class="sysreq-item">
+        <div class="sysreq-label">Dependencies</div>
+        <div class="sysreq-value">None</div>
+      </div>
+    </div>
+
+    <div class="eval-notice reveal">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      SKYNAV DevPoint runs in evaluation mode for 30 days from first launch with no
+      feature restrictions. To obtain a permanent license, go to
+      <strong>Options → License Info</strong> in the app, note your Hardware ID,
+      and contact the author via the
+      <a href="https://github.com/Skynavtech/devpoint/issues" style="color:var(--red)">GitHub repository</a>.
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════════════════════ -->
+<footer>
+  <div class="footer-brand">SKYNAV DevPoint</div>
+  <div>
+    <a href="https://github.com/Skynavtech/devpoint">GitHub</a>
+    &nbsp;·&nbsp;
+    <a href="https://github.com/Skynavtech/devpoint/issues">Issues</a>
+    &nbsp;·&nbsp;
+    <a href="https://github.com/Skynavtech/devpoint/releases">Releases</a>
+  </div>
+  <div style="margin-top:.5rem;opacity:.5;font-size:.75rem">
+    Not for regulatory use without cross-validation against official published procedures.
+  </div>
+</footer>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     JS
+══════════════════════════════════════════════════════════ -->
+<script>
+/* ── Active nav link on scroll ───────────────────────────── */
+const sections = document.querySelectorAll('section[id]');
+const navLinks  = document.querySelectorAll('.nav-links a');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      const link = document.querySelector(`.nav-links a[href="#${e.target.id}"]`);
+      if (link) link.classList.add('active');
+    }
+  });
+}, { rootMargin: '-40% 0px -55% 0px' });
+
+sections.forEach(s => observer.observe(s));
+
+/* ── Scroll-reveal ───────────────────────────────────────── */
+const revealObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      revealObserver.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+/* ── Fetch latest GitHub release ─────────────────────────── */
+async function fetchLatestRelease() {
+  try {
+    const res  = await fetch('https://api.github.com/repos/Skynavtech/devpoint/releases/latest',
+                             { headers: { Accept: 'application/vnd.github+json' } });
+    if (!res.ok) return;
+    const data = await res.json();
+    const tag  = data.tag_name || '';
+
+    // Find .exe asset
+    const asset = data.assets?.find(a => a.name.endsWith('.exe') || a.name.endsWith('.zip'));
+    const url   = asset ? asset.browser_download_url : data.html_url;
+
+    // Update version pills everywhere
+    ['hero-version', 'dl-version', 'nav-version'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = tag;
+    });
+
+    // Update download buttons
+    ['dl-main-btn', 'nav-dl-btn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && url) el.href = url;
+    });
+  } catch (e) {
+    console.warn('Could not fetch release info:', e);
+  }
+}
+
+fetchLatestRelease();
+
+/* ── Smooth scroll for all anchor links ──────────────────── */
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+});
+</script>
+
+</body>
+</html>
