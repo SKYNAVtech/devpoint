@@ -1306,11 +1306,6 @@ async function fetchLatestRelease() {
       if (el) el.textContent = tag;
     });
 
-    // Update download buttons
-    ['dl-main-btn', 'nav-dl-btn'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el && url) el.href = url;
-    });
   } catch (e) {
     console.warn('Could not fetch release info:', e);
   }
